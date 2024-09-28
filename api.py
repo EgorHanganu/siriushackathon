@@ -62,7 +62,11 @@ def upload_file():
 
     if extension == "pdf":
         text = str()
-        reader = pypdf.PdfReader(filename_tmp)
+        try:
+            reader = pypdf.PdfReader(filename_tmp)
+        except:
+            return get_404("PDF file is damaged or wrong.")
+        
         for page in reader.pages:
             text += page.extract_text().replace(" -", "-") + "\n"
     
