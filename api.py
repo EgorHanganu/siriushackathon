@@ -1,3 +1,4 @@
+import botocore.errorfactory
 from flask import Flask, request, jsonify
 import socket
 import config
@@ -7,12 +8,12 @@ import pypdf
 import openai
 import json
 import os
+import boto3
+import botocore
 from spire.doc import *
 from spire.doc.common import *
 
 app = Flask(__name__)
-
-EXTENSIONS = ["doc", "docx", "pdf"]
 
 def get_404(reason: str):
     return {"reason": reason, "code": 404}, 404
@@ -33,42 +34,51 @@ def require_api_key(f): # TEMPORARY SECURITY FUNCTION FOR DEMO PURPOSES
 @app.route('/upload', methods=['POST'])
 @require_api_key
 def upload_file():
-    if 'file' not in request.files:
-        return get_404("No file part in the request")
+    if "filename" not in request.json:
+        return get_404("No filename field in POST request")
     
-    file = request.files['file']
+    s3 = boto3.client('s3')
+    filename: str = request.json["filename"]
+    try:
+        s3_object = s3.get_object(Bucket=config.BUCKET_NAME, Key=filename)
+    except botocore.errorfactory.NoSuchKey:
+        return get_404("Filename doesn't exist in the bucket")
+    except:
+        return get_404("Undefined bucket error.")
+    
    
-    if not file.filename:
-        return get_404("No selected file")
-    
-    filename = file.filename.strip().lower()
+    filename = filename.strip().lower()
     matches = re.findall(r'[^.]+$', filename) 
 
     if not matches:
         return get_404("Unsupported extension.")
     
-    if not file:
-        return get_404("Unexpected error.")
-    
     ai_response = str()
     extension = matches[0]
     filename_tmp = config.OUTPUT_FOLDER_PATH + "/" + str(int(time.time() * 100)) + "." + extension
-    file.save(filename_tmp)
 
-    if extension in ("docx", "doc"):
-        document = Document()
-        document.LoadFromFile(filename_tmp)
-        text = re.sub(r'^.*?\r', '', document.GetText(), count=1).strip()
-
-    if extension == "pdf":
-        text = str()
-        try:
-            reader = pypdf.PdfReader(filename_tmp)
-        except:
-            return get_404("PDF file is damaged or wrong.")
+    if extension in ("docx", "doc", "pdf"):
+        content = s3_object['Body'].read()
+        if not content:
+            return get_404("No content in the file provided.")
         
-        for page in reader.pages:
-            text += page.extract_text().replace(" -", "-") + "\n"
+        with open(filename_tmp, "wb") as f:
+            f.write(content)
+
+        if extension == "pdf":
+            text = str()
+            try:
+                reader = pypdf.PdfReader(filename_tmp)
+            except:
+                return get_404("PDF file is damaged or wrong.")
+            
+            for page in reader.pages:
+                text += page.extract_text().replace(" -", "-") + "\n"
+        
+        else:
+            document = Document()
+            document.LoadFromFile(filename_tmp)
+            text = re.sub(r'^.*?\r', '', document.GetText(), count=1).strip()
     
     if text:
         client = openai.Client(api_key=config.OPENAI_API_KEY)
@@ -85,7 +95,8 @@ def upload_file():
                 except:
                     return get_404("Unexpected error. Try again.")
 
-    os.remove(filename_tmp)
+    if os.path.isfile(filename_tmp):
+        os.remove(filename_tmp)
     return {"result": ai_response}
 
 if __name__ == '__main__':

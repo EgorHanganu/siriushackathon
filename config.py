@@ -4,6 +4,16 @@ OUTPUT_FOLDER_PATH = "Output"
 
 INTERNAL_API_KEY = os.getenv("INTERNAL_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+BUCKET_NAME = 'hackaton-2024-sendphoto'
+
+os.environ['AWS_ACCESS_KEY_ID'] = os.getenv("AWS_ACCESS_KEY")
+os.environ['AWS_SECRET_ACCESS_KEY'] = os.getenv("AWS_SECRET_KEY")
+os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+
+
+
+
+
 
 AI_PROMPT = '''\n\nSTRONGLY SEND ONLY JSON WITHOUT ANY CAPTIONS! Put information from the text above to the values in provided json. If information missing, put null. Note that this data will be used to create a invoice or bill. The data i gave you is an contract or an official document where are specified the condition of these papers (which i need to store and manage). Be careful that there can be contracts which have temporary or subscription billing, in such case their service can be paid depending on the date when the contract come to effect and is closed (take care of the payment terms and conditions)
 
