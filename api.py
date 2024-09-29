@@ -1,4 +1,4 @@
-import botocore.errorfactory
+import logging
 from flask import Flask, request, jsonify
 import socket
 import config
@@ -9,13 +9,14 @@ import openai
 import json
 import os
 import boto3
-import botocore
+import datetime
 from spire.doc import *
 from spire.doc.common import *
 
 app = Flask(__name__)
 
 def get_404(reason: str):
+    logging.info(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S") + ";" + reason)
     return {"reason": reason, "code": 404}, 404
 
 os.makedirs(config.OUTPUT_FOLDER_PATH, exist_ok=True)
@@ -42,7 +43,8 @@ def upload_file():
     try:
         s3_object = s3.get_object(Bucket=config.BUCKET_NAME, Key=filename)
     except:
-        return get_404("Filename doesn't exist in the bucket or undefined error.")
+        response = "Filename doesn't exist in the bucket or undefined error."
+        return get_404(response)
     
    
     filename = filename.strip().lower()
