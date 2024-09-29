@@ -41,10 +41,8 @@ def upload_file():
     filename: str = request.json["filename"]
     try:
         s3_object = s3.get_object(Bucket=config.BUCKET_NAME, Key=filename)
-    except botocore.errorfactory.NoSuchKey:
-        return get_404("Filename doesn't exist in the bucket")
     except:
-        return get_404("Undefined bucket error.")
+        return get_404("Filename doesn't exist in the bucket or undefined error.")
     
    
     filename = filename.strip().lower()
